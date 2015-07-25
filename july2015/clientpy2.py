@@ -171,7 +171,7 @@ def smart_sell_1_iter(stock):
 
   if no_buy > 15:
     want_price = (cur_buy+cur_sell)/2
-  else if no_buy > 25:
+  elif no_buy > 25:
     want_price = min(cur_buy - 0.01, cur_sell - 0.02)
 
   num_shares = int(my_securities[stock][0])
