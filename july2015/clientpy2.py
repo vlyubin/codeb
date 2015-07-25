@@ -222,8 +222,9 @@ def pick_stock():
       if num_shares < 2:
         break
 
-      if no_buy > 15 or just_bought or (rand() % 19 == 0):
-        print "Trying to buy %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
+      if no_buy > 15 or just_bought or (rand() % 10 == 0):
+        print "Buying %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
+        num_shares = int(my_cash / (cur_sell+0.001))
         run("BID %s %f %d" % (sec, cur_sell+0.001, num_shares))
       else:
         print "Trying to buy %s: %d shares at %f" % (sec, num_shares, buying_price)
