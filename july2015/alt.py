@@ -14,6 +14,12 @@ class Order:
 ask_orders = {} # Map of asks for each stock STOCK_SYMBOL -> List[Bid]
 bid_orders = {} # Map of bids for each stock STOCK_SYMBOL -> List[Bid]
 
+net_worth = {}
+cur_bids = []
+dividend_ratio = {}
+price_decrese = {}
+last_purchase = None
+
 def once_run(*commands):
   global sock
   HOST, PORT = "codebb.cloudapp.net", 17429
@@ -23,15 +29,13 @@ def once_run(*commands):
 
   try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #print socket.gettimeout()
-    sock.settimeout(3)
-
+    sock.settimeout(5)
     sock.connect((HOST, PORT))
+    
     sock.sendall(data)
     sfile = sock.makefile()
     rline = sfile.readline()
     while rline:
-      #print(rline.strip())
       return_lines.append(rline.strip())
       rline = sfile.readline()
   finally:
@@ -48,25 +52,6 @@ def run(commands):
       raise
     except:
       print "Warning: network failed"
-
-def subscribe():
-  HOST, PORT = "codebb.cloudapp.net", 17429
-  
-  data=OUR_USERNAME + " " + OUR_PASSWORD + "\nSUBSCRIBE\n"
-
-  try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    sock.connect((HOST, PORT))
-    sock.sendall(data)
-    sfile = sock.makefile()
-    rline = sfile.readline()
-    while rline:
-      print(rline.strip())
-      rline = sfile.readline()
-  finally:
-    sock.close()
-
 
 OUR_USERNAME = "Team6"
 OUR_PASSWORD = "bird"
@@ -119,7 +104,7 @@ def get_orders(stock):
 # Max buy and min sell prices
 def get_buy_and_sell_prices(order):
   cur_buy = 0
-  cur_sell = 1000
+  cur_sell = 100000
   for bid_ask, name, price, nshare in order:
     if bid_ask == "BID":
       if price > cur_buy:
@@ -129,73 +114,77 @@ def get_buy_and_sell_prices(order):
         cur_sell = price
   return (cur_buy, cur_sell)
 
-def sell_stock(stock):
-  """
-  Dump everything instantly (don't do this lol)
-
-  while we still have stock:
-    get highest buyer
-    ask that much
-  """
-  while True:
-    get_my_securities()
-    get_orders(stock)
-    this_ord = orders[stock]
-
-    cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-
-    # assume we can sell at cur_buy
-    selling_price = cur_buy - 0.1
-    num_shares = int(my_securities[stock][0])
-
-    if num_shares == 0:
-      break
-
-    print "Selling %s: %d shares at %f" % (stock, num_shares, selling_price)
-    run("ASK %s %f %d"% (stock, selling_price, num_shares))
-
 def smart_sell_1_iter(stock):
   get_my_securities()
   get_orders(stock)
   this_ord = orders[stock]
 
   cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-  want_price = max(cur_buy - 0.01, cur_sell - 0.06)
 
+  want_price = max(cur_buy - 0.005, cur_sell - price_decrese[stock])
   num_shares = int(my_securities[stock][0])
+  price_decrese[stock] *= 1.2
+
+  if num_shares <= 4:
+    want_price = cur_buy - 0.005
+
   print "Selling %s: %d shares at %f" % (stock, num_shares, want_price)
   run("ASK %s %f %d"% (stock, want_price, num_shares))
 
-def smart_sell(stock):
-  while True:
-    smart_sell_1_iter(stock)
-    time.sleep(3)
+def is_increasing_net_worth(sec):
+  bad = 0
+  for i in xrange(len(net_worth[sec]) - 1):
+    if net_worth[sec][i+1] < net_worth[sec][i]:
+      bad += 1
+  if bad > 2:
+    return 0
+  return 1
 
 def pick_stock():
+  global cur_bids
   for sec,_ in securities.iteritems():
     get_orders(sec)
 
   magic_nums = []
   for sec,_ in securities.iteritems():
-    diff = abs(ask_orders[sec][0].price - bid_orders[sec][-1].price)
-    magic_nums.append((diff / bid_orders[sec][-1].price, sec))
+    differnce_in_ask_bid = abs(ask_orders[sec][0].price - bid_orders[sec][-1].price) / ask_orders[sec][0].price
+    is_net_worth_inc = is_increasing_net_worth(sec)
+
+    print sec, is_net_worth_inc, differnce_in_ask_bid
+    magic_nums.append((-1000000 * is_net_worth_inc + 100 * differnce_in_ask_bid, sec))
 
   magic_nums = sorted(magic_nums)
   # cannot buy until 4 minutes after selling it
 
+  increase_premium = False
+  buy_market = False
+  if datetime.datetime.now() - last_purchase > datetime.timedelta(seconds=10):
+    increase_premium = True
+  if datetime.datetime.now() - last_purchase > datetime.timedelta(seconds=30):
+    buy_market = True
+
+  attempts = 0
   for v,sec in magic_nums:
+    if attempts > 3:
+      break
+
     bad = False
     if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(minutes=2):
       # if we just sold this less than 2 minutes ago
       bad = True
-    if sec in my_securities and my_securities[sec][0] > 0 and datetime.datetime.now() - time_bought[sec] < datetime.timedelta(seconds=3):
+    if sec in my_securities and my_securities[sec][0] > 0 and sec in time_bought and datetime.datetime.now() - time_bought[sec] < datetime.timedelta(seconds=3):
       # if we already have this stock
       bad = True
     if not bad:
       get_orders(sec)
       cur_buy, cur_sell = get_buy_and_sell_prices(orders[sec])
 
-      buying_price = cur_buy + 0.005
+      if buy_market:
+        buying_price = cur_sell + 0.001
+      elif increase_premium:
+          buying_price = min(cur_sell + 0.001, cur_buy + 0.5)
+      else:
+        buying_price = cur_buy + 0.001
       num_shares = int(my_cash / buying_price)
 
       if num_shares < 2:
@@ -203,25 +192,49 @@ def pick_stock():
 
       print "Trying to buy %s: %d shares at %f" % (sec, num_shares, buying_price)
       run("BID %s %f %d" % (sec, buying_price, num_shares))
+      cur_bids.append(sec)
+      attempts += 1
 
 time_bought = {}
 time_sold = {}
-def autorun():
-  for i in xrange(5):
+def trade():
+  global cur_bids
+  global last_purchase
+  for i in xrange(4):
     once_run("")
+
+  get_cash()
+  old_cash = my_cash
+  previous_securities = my_securities
+  last_purchase = datetime.datetime.now()
+
   while True:
     get_securities()
 
-    for security in securities:
-      run("CLEAR_BID %s" % (security))
+    for sec in securities:
+      if sec not in net_worth:
+        net_worth[sec] = []
+      net_worth[sec].append(securities[sec][0])
+      net_worth[sec] = net_worth[sec][-5:]
 
+      if sec not in dividend_ratio:
+        dividend_ratio[sec] = securities[sec][1]
+
+    for sec in cur_bids:
+      run("CLEAR_BID %s" % (security))
+    cur_bids = []
+
+    old_cash = my_cash
     get_cash()
 
-    previous_securities = my_securities
     get_my_securities()
     for security in my_securities:
       if my_securities[security][0] > previous_securities[security][0] and previous_securities[security][0] == 0:
+        print 'BOUGHT ' + security + ' ' + str(my_securities[security][0])
         time_bought[security] = datetime.datetime.now()
+        price_decrese[security] = 0.05
+        last_purchase = datetime.datetime.now()
+    previous_securities = my_securities
 
     print "MY CASH:", my_cash
 
@@ -234,20 +247,23 @@ def autorun():
     if my_cash > 320 and num_owned < 4:
       pick_stock()
 
-    # If we hold a stock for more than 30 seconds, start smart selling
+    not_making_money = False
+    if my_cash > old_cash and my_cash - old_cash < 1 and my_cash - old_cash > 0.0000001:
+      not_making_money = True
+
+    # If we hold a stock for more than 25 seconds, start smart selling
     for sec, vl in my_securities.iteritems():
       we_hold = vl[0]
       if we_hold > 0:
-        if datetime.datetime.now() - time_bought[sec] > datetime.timedelta(seconds=30):
+        if (sec in time_bought and datetime.datetime.now() - time_bought[sec] > datetime.timedelta(seconds=25)) or not_making_money:
           smart_sell_1_iter(sec)
           # If we managed to sell something completely, update it
           time_sold[sec] = datetime.datetime.now()
     time.sleep(1)
 
-def sell_all():
-  get_my_securities()
-  for security in my_securities:
-    sell_stock(security)
+get_my_securities()
+for security in my_securities:
+  price_decrese[security] = 0.05
+  time_bought[security] = datetime.datetime.now() - datetime.timedelta(seconds=90)
 
-sell_all()
-autorun()
+trade()
