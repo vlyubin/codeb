@@ -165,7 +165,7 @@ def smart_sell_1_iter(stock):
   this_ord = orders[stock]
 
   cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-  want_price = max(cur_buy - 0.001, cur_sell - 0.06)
+  want_price = max(cur_buy - 0.01, cur_sell - 0.06)
 
   num_shares = int(my_securities[stock][0])
 
@@ -222,10 +222,11 @@ def pick_stock():
       if num_shares < 2:
         break
 
-      print "Trying to buy %s: %d shares at %f" % (sec, num_shares, buying_price)
-      if no_buy > 13 or just_bought:
+      if no_buy > 15 or just_bought or (rand() % 19 == 0):
+        print "Trying to buy %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
         run("BID %s %f %d" % (sec, cur_sell+0.001, num_shares))
       else:
+        print "Trying to buy %s: %d shares at %f" % (sec, num_shares, buying_price)
         run("BID %s %f %d" % (sec, buying_price, num_shares))
       cur_bids.append(sec)
 
@@ -272,7 +273,6 @@ def trade():
     if my_cash > 320 and num_owned < 4:
       pick_stock()
 
-    # If we hold a stock for more than 20 seconds, start smart selling
     for sec, vl in my_securities.iteritems():
       we_hold = vl[0]
       if we_hold > 0:
