@@ -167,12 +167,10 @@ def smart_sell_1_iter(stock):
   this_ord = orders[stock]
 
   cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-  want_price = max(cur_buy - 0.01, cur_sell - 0.02)
-
-  if no_buy > 15:
-    want_price = (cur_buy+cur_sell)/2
-  elif no_buy > 25:
+  if no_buy > 30:
     want_price = min(cur_buy - 0.01, cur_sell - 0.02)
+  else: 
+    want_price = max(max(cur_buy - 0.01, cur_sell - 0.02), (cur_buy+cur_sell)/2)
 
   num_shares = int(my_securities[stock][0])
 
@@ -222,9 +220,9 @@ def pick_stock():
       buying_price = min(cur_sell, cur_buy) + 0.001
       num_shares = int(my_cash / buying_price)
 
-      if no_buy > 10:
-        print "Buying %s: %d shares at %f" % (sec, num_shares, (cur_sell+cur_buy)/2 +0.001)
-        buying_price = (cur_sell+cur_buy)/2 + 0.001
+      if no_buy > 15:
+        buying_price = (2*min(cur_sell, cur_buy) + max(cur_sell, cur_buy)) / 3 + 0.001
+        print "Buying %s: %d shares at %f" % (sec, num_shares, buying_price+0.001)
         num_shares = int(my_cash / buying_price)
         run("BID %s %f %d" % (sec, buying_price, num_shares))
       else:
