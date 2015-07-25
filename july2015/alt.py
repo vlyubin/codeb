@@ -137,7 +137,6 @@ def sell_stock(stock):
     get highest buyer
     ask that much
   """
-  time_sold[stock] = datetime.datetime.now()
   while True:
     get_my_securities()
     get_orders(stock)
@@ -183,6 +182,7 @@ def pick_stock():
 
   magic_nums = sorted(magic_nums)
   # cannot buy until 4 minutes after selling it
+
   for v,sec in magic_nums:
     bad = False
     if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(minutes=2):
@@ -207,6 +207,8 @@ def pick_stock():
 time_bought = {}
 time_sold = {}
 def autorun():
+  for i in xrange(5):
+    once_run("")
   while True:
     get_securities()
 
