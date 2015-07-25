@@ -3,7 +3,7 @@ import sys
 import time
 import datetime
 import copy
-
+  
 sock = None
 
 class Order:
@@ -17,13 +17,8 @@ bid_orders = {} # Map of bids for each stock STOCK_SYMBOL -> List[Bid]
 def once_run(*commands):
   global sock
   HOST, PORT = "codebb.cloudapp.net", 17429
-<<<<<<< HEAD
-
-  data=OUR_USERNAME + " " + OUR_PASSWORD + "\n" + "\n".join(commands) + "\nCLOSE_CONNECTION\n"
-=======
   
   data = OUR_USERNAME + " " + OUR_PASSWORD + "\n" + "\n".join(commands) + "\nCLOSE_CONNECTION\n"
->>>>>>> 89f578ba5f18a90cb07da10a2503d56c4766f5cf
   return_lines = []
 
   try:
@@ -56,7 +51,7 @@ def run(commands):
 
 def subscribe():
   HOST, PORT = "codebb.cloudapp.net", 17429
-
+  
   data=OUR_USERNAME + " " + OUR_PASSWORD + "\nSUBSCRIBE\n"
 
   try:
