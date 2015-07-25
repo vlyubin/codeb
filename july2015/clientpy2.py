@@ -1,3 +1,5 @@
+from math import atan
+import numpy as np
 import socket
 import sys
 import time
@@ -17,6 +19,30 @@ net_worth = {}
 
 no_buy = 0
 cur_bids = []
+
+def linreg(X, Y):
+    """
+    return a,b in solution to y = ax + b such that root mean square distance between trend line and original points is minimized
+    """
+    N = len(X)
+    Sx = Sy = Sxx = Syy = Sxy = 0.0
+    for x, y in zip(X, Y):
+        Sx = Sx + x
+        Sy = Sy + y
+        Sxx = Sxx + x*x
+        Syy = Syy + y*y
+        Sxy = Sxy + x*y
+    det = Sxx * N - Sx * Sx
+    return (Sxy * N - Sy * Sx)/det, (Sxx * Sy - Sx * Sxy)/det
+
+def angle(x):
+    x1,x2,n,m,b = 0.,len(x),11,2.,5.
+    X = np.r_[x1:x2:n*1j]
+    a,b = linreg(range(len(x)),x) #your x,y are switched from standard notation
+    if a < -0.2:
+        return 0
+    else:
+        return 1
 
 def once_run(*commands):
   global sock
@@ -133,31 +159,6 @@ def get_buy_and_sell_prices(order):
         cur_sell = price
   return (cur_buy, cur_sell)
 
-def sell_stock(stock):
-  """
-  Dump everything instantly (don't do this lol)
-
-  while we still have stock:
-    get highest buyer
-    ask that much
-  """
-  while True:
-    get_my_securities()
-    get_orders(stock)
-    this_ord = orders[stock]
-
-    cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-
-    # assume we can sell at cur_buy
-    selling_price = cur_buy - 0.1
-    num_shares = int(my_securities[stock][0])
-
-    if num_shares == 0:
-      break
-
-    print "Selling %s: %d shares at %f" % (stock, num_shares, selling_price)
-    run("ASK %s %f %d"% (stock, selling_price, num_shares))
-
 def smart_sell_1_iter(stock):
   get_my_securities()
   get_orders(stock)
@@ -175,13 +176,11 @@ def smart_sell_1_iter(stock):
   run("ASK %s %f %d"% (stock, want_price, num_shares))
 
 def is_increasing_net_worth(sec):
-  bad = 0
-  for i in xrange(len(net_worth[sec]) - 1):
-    if net_worth[sec][i+1] < net_worth[sec][i]:
-      bad += 1
-  if bad > 35:
-    return 0
-  return 1
+  if len(net_worth[sec]) > 3:
+    rv = angle(net_worth[sec])
+  else:
+    rv = 0
+  return rv
 
 def pick_stock():
   global no_buy
@@ -224,7 +223,7 @@ def pick_stock():
         break
 
       print "Trying to buy %s: %d shares at %f" % (sec, num_shares, buying_price)
-      if no_buy > 12 or just_bought:
+      if no_buy > 13 or just_bought:
         run("BID %s %f %d" % (sec, cur_sell+0.001, num_shares))
       else:
         run("BID %s %f %d" % (sec, buying_price, num_shares))
@@ -245,7 +244,7 @@ def trade():
       if sec not in net_worth:
         net_worth[sec] = []
       net_worth[sec].append(securities[sec][0])
-      net_worth[sec] = net_worth[sec][-50:]
+      net_worth[sec] = net_worth[sec][-40:]
 
     for sec in cur_bids:
       run("CLEAR_BID %s" % (security))
