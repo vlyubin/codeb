@@ -166,7 +166,7 @@ def smart_sell_1_iter(stock):
   this_ord = orders[stock]
 
   cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-  want_price = max(cur_buy - 0.01, cur_sell - 0.06)
+  want_price = max(cur_buy - 0.01, cur_sell - 0.02)
 
   num_shares = int(my_securities[stock][0])
 
