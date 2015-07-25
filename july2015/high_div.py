@@ -174,8 +174,17 @@ def buy_stock(stock):
 
     cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
 
+    buying_price = cur_buy + 0.1
+    num_shares = int(my_cash / buying_price)
+
+    if num_shares < 2:
+      break
+
+    print "Buying %s: %d shares at %f (kidalovo)" % (stock, num_shares, buying_price)
+    run("BID %s %f %d" % (stock, buying_price, num_shares))
+
     # assume we can buy at cur_sell
-    buying_price = cur_sell + 0.1
+    buying_price = cur_sell + 0.001
     num_shares = int(my_cash / buying_price)
 
     if num_shares < 2:
@@ -185,43 +194,19 @@ def buy_stock(stock):
     run("BID %s %f %d" % (stock, buying_price, num_shares))
 
 
-def sell_stock(stock):
-  """
-  Dump everything instantly (don't do this lol)
-
-  while we still have stock:
-    get highest buyer
-    ask that much
-  """
-  time_sold[stock] = datetime.datetime.now()
-  while True:
-    get_my_securities()
-    get_orders(stock)
-    this_ord = orders[stock]
-
-    cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
-
-    # assume we can sell at cur_buy
-    selling_price = cur_buy - 0.1
-    num_shares = int(my_securities[stock][0])
-
-    if num_shares == 0:
-      break
-
-    print "Selling %s: %d shares at %f" % (stock, num_shares, selling_price)
-    run("ASK %s %f %d"% (stock, selling_price, num_shares))
-
-
-
 def smart_sell_1_iter(stock):
   get_my_securities()
   get_orders(stock)
   this_ord = orders[stock]
 
-  _, cur_sell = get_buy_and_sell_prices(this_ord)
-  want_price = cur_sell - 0.06
+  cur_buy, cur_sell = get_buy_and_sell_prices(this_ord)
+  want_price = max(cur_buy - 0.001, cur_sell - 0.06)
 
   num_shares = int(my_securities[stock][0])
+
+  if num_shares <= 4:
+    want_price = cur_buy - 0.001
+
   print "Selling %s: %d shares at %f" % (stock, num_shares, want_price)
   run("ASK %s %f %d"% (stock, want_price, num_shares))
 
