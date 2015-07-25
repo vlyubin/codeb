@@ -95,11 +95,25 @@ def get_buy_and_sell_prices(order):
         cur_sell = price
   return (cur_buy, cur_sell)
 
+
+
 def trade():
+  for i in xrange(5):
+    once_run("")
+
   while True:
     get_cash()
+    get_securities()
     get_my_securities()
-    get_my_orders()
-    print "MY CASH:", my_cash
+
+    print "MY_CASH " + str(my_cash)    
+
+    for k in securities:
+        get_orders(k)
+        print k + " --- " + str(securities[k])
+
+    print "MY_SEC:"
+    for k in my_securities:
+      print k + " --- " + str(my_securities[k])
 
 trade()
