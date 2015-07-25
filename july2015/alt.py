@@ -218,7 +218,7 @@ def autorun():
     previous_securities = my_securities
     get_my_securities()
     for security in my_securities:
-      if (not security in previous_securities) or (my_securities[security][0] > previous_securities[security][0]):
+      if my_securities[security][0] > previous_securities[security][0] and previous_securities[security][0] == 0:
         time_bought[security] = datetime.datetime.now()
 
     print "MY CASH:", my_cash
