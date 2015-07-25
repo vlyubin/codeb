@@ -17,7 +17,7 @@ try:
 	rline = sfile.readline()
 	while 1:
 		if (rline):
-			print rline
+			print rline.strip()
 		rline = sfile.readline()
 
 except KeyboardInterrupt:
