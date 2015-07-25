@@ -222,9 +222,9 @@ def pick_stock():
       buying_price = min(cur_sell, cur_buy) + 0.001
       num_shares = int(my_cash / buying_price)
 
-      if no_buy > 15:
-        print "Buying %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
-        buying_price = cur_sell + 0.001
+      if no_buy > 10:
+        print "Buying %s: %d shares at %f" % (sec, num_shares, (cur_sell+cur_buy)/2 +0.001)
+        buying_price = (cur_sell+cur_buy)/2 + 0.001
         num_shares = int(my_cash / buying_price)
         run("BID %s %f %d" % (sec, buying_price, num_shares))
       else:
