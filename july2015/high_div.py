@@ -183,6 +183,8 @@ def buy_stock(stock):
     print "Buying %s: %d shares at %f (kidalovo)" % (stock, num_shares, buying_price)
     run("BID %s %f %d" % (stock, buying_price, num_shares))
 
+    get_cash()
+
     # assume we can buy at cur_sell
     buying_price = cur_sell + 0.001
     num_shares = int(my_cash / buying_price)
@@ -248,23 +250,7 @@ def pick_stock():
   get_securities()
   get_cash()
   for sec,_ in securities.iteritems():
-    print "fetching orders", sec
     get_orders(sec)
-
-  """
-  min_diff = 1000
-  best_stock = None
-
-  for sec,_ in securities.iteritems():
-    buy_p, sell_p = get_100th_buy_and_sell(orders[sec])
-    diff = sell_p - buy_p
-    print sec, buy_p, sell_p, diff
-    if diff < min_diff:
-      min_diff = diff
-      best_stock = sec
-
-  print "best stock is", best_stock, min_diff
-  """
 
   magic_nums = []
   for sec,_ in securities.iteritems():
