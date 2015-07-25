@@ -7,6 +7,7 @@ import copy
 # Default stuff
 
 sock = None
+cur_time = 0
 
 def once_run(*commands):
   global sock
@@ -15,21 +16,27 @@ def once_run(*commands):
   data=OUR_USERNAME + " " + OUR_PASSWORD + "\n" + "\n".join(commands) + "\nCLOSE_CONNECTION\n"
   return_lines = []
 
-  try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #print socket.gettimeout()
-    sock.settimeout(3)
-
-    sock.connect((HOST, PORT))
-    sock.sendall(data)
-    sfile = sock.makefile()
-    rline = sfile.readline()
-    while rline:
-      #print(rline.strip())
-      return_lines.append(rline.strip())
+  while True:
+    one_more = 0
+    try:
+      sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      #print socket.gettimeout()
+      sock.settimeout(3)
+  
+      sock.connect((HOST, PORT))
+      sock.sendall(data)
+      sfile = sock.makefile()
       rline = sfile.readline()
-  finally:
-    sock.close()
+      while rline:
+        #print(rline.strip())
+        return_lines.append(rline.strip())
+        rline = sfile.readline()
+    except Exception:
+      one_more = 1
+    finally:
+      sock.close()
+    if one_more == 0:
+      break
 
   return return_lines
 
@@ -66,11 +73,14 @@ class Order:
 
 securities = {}
 my_cash = 0
+last_cash_gain = 100
 my_securities = {}
 my_orders = {}
 
 ask_orders = {} # Map of asks for each stock STOCK_SYMBOL -> List[Bid]
 bid_orders = {} # Map of bids for each stock STOCK_SYMBOL -> List[Bid]
+
+hold_time = {}
 
 # Helper functions
 
@@ -81,7 +91,6 @@ def get_securities():
 
 def get_cash():
   global my_cash
-  print run("MY_CASH")
   my_cash = float(run("MY_CASH")[0].split()[1])
 
 def get_my_securities():
@@ -112,46 +121,93 @@ def get_orders(stock):
       bid_orders[stock].append(Order(float(inp[4*i+2]), int(inp[4*i+3])))
 
 def buy():
-  pass # TODO
+  options = []
+  for security in ask_orders:
+    if len(bid_orders[security]) > 0 and len(ask_orders[security]) > 0:
+      options.append((abs(ask_orders[security][0].price - bid_orders[security][-1].price), security))
+
+  options.sort(key=lambda x: x[0])
+  if len(options) > 0:
+    security = options[0][1]
+    price = ask_orders[security][0].price + 0.001
+    count = ask_orders[security][0].shares
+    count = min(count, int(my_cash / price))
+
+    if count == 0:
+      return
+
+    once_run('CLEAR_BID')
+    print 'Bidding ' + security + " for price " + str(price) + " ; num shares " + str(count)
+    once_run("BID " + security + " " + str(price) + " " + str(count))
+
+def sell_security(security):
+  price = bid_orders[security][-1].price - 0.001
+  count = bid_orders[security][-1].shares
+  count = min(count, my_securities[security].shares)
+
+  once_run('CLEAR_ASK')
+  print 'Asking ' + security + " for price " + str(price) + " ; num shares " + str(count)
+  once_run("ASK " + security + " " + str(price) + " " + str(count))
 
 def sell():
-  pass # TODO
+  for security in securities:
+    if not security in my_securities:
+      hold_time[security] = 0
+
+  for security in my_securities:
+    hold_time[security] += 1
+
+    print 'Checking ' + security
+    if hold_time[security] > 20 or last_cash_gain < 1.0:
+      # sell security
+      sell_security(security)
 
 def trade():
-  cur_time = 0
+  global cur_time
   # Kill old connections
   for i in xrange(5):
     once_run("")
 
+  get_securities()
+  for k in securities:
+    hold_time[k] = 0
+
   while True:
+    old_cash = my_cash
     get_cash()
+    last_cash_gain = my_cash - old_cash
+    if last_cash_gain < 0:
+      # We bought some stocks, set last_cash_gain to large numbre to avoid thinking that we should sell
+      last_cash_gain = 1000
+
     get_securities()
+    
+    last_my_securities = my_securities
     get_my_securities()
 
     print "MY_CASH " + str(my_cash)    
 
-    print "GEN_SEC:"
     for k in securities:
         get_orders(k)
 
-    print "BEST_ASK:"
-    for security in ask_orders:
-      ask_orders[security].sort(key=lambda x: x.price)
-      if len(ask_orders[security]) != 0:
-        print security + ": " + str(ask_orders[security][-1].price) + " (count: " + str(ask_orders[security][-1].shares) + ")"
+    #print "Cheapest ask:"
+    #for security in ask_orders:
+    #  ask_orders[security].sort(key=lambda x: x.price)
+    #  if len(ask_orders[security]) != 0:
+    #    print security + ": " + str(ask_orders[security][0].price) + " (count: " + str(ask_orders[security][0].shares) + ")"
 
-    print "BEST_BID:"
-    for security in bid_orders:
-      bid_orders[security].sort(key=lambda x: x.price)
-      if len(bid_orders[security]) != 0:
-        print security + ": " + str(bid_orders[security][0].price) + " (count: " + str(bid_orders[security][0].shares) + ")"
+    #print "Most expensive bid:"
+    #for security in bid_orders:
+    #  bid_orders[security].sort(key=lambda x: x.price)
+    #  if len(bid_orders[security]) != 0:
+    #    print security + ": " + str(bid_orders[security][-1].price) + " (count: " + str(bid_orders[security][-1].shares) + ")"
 
     # Check if we have wasted shares, if so sell them
     sell()
 
     get_cash()
 
-    if my_cash > 100:
+    if my_cash > 10:
       # Buy the best shares available
       buy()
 
