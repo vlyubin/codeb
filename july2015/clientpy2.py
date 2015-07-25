@@ -202,7 +202,7 @@ def pick_stock():
 
   for v,sec in magic_nums[:4]:
     bad = False
-    if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(minutes=2):
+    if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(seconds=100):
       # if we just sold this less than 2 minutes ago
       bad = True
     if sec in my_securities and my_securities[sec][0] > 0:
