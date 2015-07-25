@@ -200,9 +200,10 @@ def pick_stock():
   magic_nums = sorted(magic_nums)
   # cannot buy until 4 minutes after selling it
 
+  get_my_securities()
   for v,sec in magic_nums[:4]:
     bad = False
-    if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(seconds=100):
+    if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(seconds=90):
       # if we just sold this less than 2 minutes ago
       bad = True
     if sec in my_securities and my_securities[sec][0] > 0:
@@ -232,6 +233,7 @@ time_sold = {}
 def trade():
   global no_buy
   global cur_bids
+  global my_cash
 
   old_cash = my_cash
 
@@ -250,7 +252,6 @@ def trade():
       run("CLEAR_BID %s" % (security))
     cur_bids = []
 
-    get_cash()
     no_buy += 1
 
     previous_securities = my_securities
@@ -273,8 +274,10 @@ def trade():
       pick_stock()
 
     not_making_money = False
+    get_cash()
     if my_cash > old_cash and my_cash - old_cash < 1 and my_cash - old_cash > 0.0000001:
       not_making_money = True
+    old_cash = my_cash
 
     for sec, vl in my_securities.iteritems():
       we_hold = vl[0]
@@ -283,7 +286,6 @@ def trade():
           smart_sell_1_iter(sec)
           # If we managed to sell something completely, update it
           time_sold[sec] = datetime.datetime.now()
-    old_cash = my_cash
     time.sleep(1)
 
 get_cash()

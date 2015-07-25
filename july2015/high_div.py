@@ -130,26 +130,6 @@ def how_many_can_buy(order, money):
   return count
 
 
-def get_100th_buy_and_sell(order):
-  cur_buy = 0
-  cur_sell = 1000
-  buy_list = []
-  sell_list = []
-  for bid_ask, name, price, nshare in order:
-    if bid_ask == "BID":
-      buy_list = buy_list + nshare * [price]
-    if bid_ask == "ASK":
-      sell_list = sell_list + nshare * [price]
-  buy_list = sorted(buy_list)
-  sell_list = sorted(sell_list)
-
-  # Get 100th from both sides, if less than 100 then it's bad
-  if len(buy_list) < 105 or len(sell_list) < 105:
-    return (0,1000)
-
-  return buy_list[-100], sell_list[100]
-
-
 # assumes that get_orders was just called on everything
 def sum_orders(stock):
   s = 0
@@ -266,7 +246,7 @@ def pick_stock():
   magic_nums.reverse()
   for v,sec in magic_nums:
     bad = False
-    if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(minutes=3):
+    if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(minutes=2):
       bad = True
     if sec in my_securities and my_securities[sec][0] > 0:
       # if we already have this stock
@@ -317,4 +297,3 @@ for security in my_securities:
   time_bought[security] = datetime.datetime.now() - datetime.timedelta(seconds=90)
 
 autorun()
-
