@@ -3,7 +3,42 @@ import sys
 import time
 import datetime
 import copy
+
+from math import atan
+import numpy as np
+import socket
+import sys
+import time
+import datetime
+import copy
+import random
   
+sock = None
+
+def linreg(X, Y):
+    """
+    return a,b in solution to y = ax + b such that root mean square distance between trend line and original points is minimized
+    """
+    N = len(X)
+    Sx = Sy = Sxx = Syy = Sxy = 0.0
+    for x, y in zip(X, Y):
+        Sx = Sx + x
+        Sy = Sy + y
+        Sxx = Sxx + x*x
+        Syy = Syy + y*y
+        Sxy = Sxy + x*y
+    det = Sxx * N - Sx * Sx
+    return (Sxy * N - Sy * Sx)/det, (Sxx * Sy - Sx * Sxy)/det
+
+def angle(x):
+    x1,x2,n,m,b = 0.,len(x),11,2.,5.
+    X = np.r_[x1:x2:n*1j]
+    a,b = linreg(range(len(x)),x) #your x,y are switched from standard notation
+    if a < -0.2:
+        return 0
+    else:
+        return 1
+
 sock = None
 
 class Order:
@@ -132,13 +167,11 @@ def smart_sell_1_iter(stock):
   run("ASK %s %f %d"% (stock, want_price, num_shares))
 
 def is_increasing_net_worth(sec):
-  bad = 0
-  for i in xrange(len(net_worth[sec]) - 1):
-    if net_worth[sec][i+1] < net_worth[sec][i]:
-      bad += 1
-  if bad > 2:
-    return 0
-  return 1
+  if len(net_worth[sec]) > 3:
+    rv = angle(net_worth[sec])
+  else:
+    rv = 0
+  return rv
 
 def pick_stock():
   global cur_bids
@@ -180,11 +213,11 @@ def pick_stock():
       cur_buy, cur_sell = get_buy_and_sell_prices(orders[sec])
 
       if buy_market:
-        buying_price = cur_sell + 0.001
+        buying_price = min(cur_sell, cur_buy) + 0.001
       elif increase_premium:
-          buying_price = min(cur_sell + 0.001, cur_buy + 0.5)
+          buying_price = min(cur_sell, cur_buy) + 0.5
       else:
-        buying_price = cur_buy + 0.001
+        buying_price = max(cur_sell, cur_buy) + 0.001
       num_shares = int(my_cash / buying_price)
 
       if num_shares < 2:

@@ -204,29 +204,25 @@ def pick_stock():
     if sec in time_sold and datetime.datetime.now() - time_sold[sec] < datetime.timedelta(minutes=2):
       # if we just sold this less than 2 minutes ago
       bad = True
-    if sec in my_securities and my_securities[sec][0] > 0 and sec in time_bought and datetime.datetime.now() - time_bought[sec] > datetime.timedelta(seconds=3):
+    if sec in my_securities and my_securities[sec][0] > 0:
       # if we already have this stock
       bad = True
-
-    just_bought = False
-    if sec in my_securities and my_securities[sec][0] > 0 and sec in time_bought and datetime.datetime.now() - time_bought[sec] < datetime.timedelta(seconds=3):
-      # if we already have this stock
-      just_bought = True
 
     if not bad:
       get_orders(sec)
       cur_buy, cur_sell = get_buy_and_sell_prices(orders[sec])
 
-      buying_price = cur_buy + 0.005
+      buying_price = min(cur_sell, cur_buy) + 0.001
       num_shares = int(my_cash / buying_price)
 
       if num_shares < 2:
         break
 
-      if no_buy > 15 or just_bought or (random.random() < 0.1):
+      if no_buy > 15 or random.random() < 0.1:
         print "Buying %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
-        num_shares = int(my_cash / (cur_sell+0.001))
-        run("BID %s %f %d" % (sec, cur_sell+0.001, num_shares))
+        buying_price = max(cur_sell, cur_buy) + 0.001
+        num_shares = int(my_cash / buying_price)
+        run("BID %s %f %d" % (sec, buying_price, num_shares))
       else:
         print "Trying to buy %s: %d shares at %f" % (sec, num_shares, buying_price)
         run("BID %s %f %d" % (sec, buying_price, num_shares))
@@ -274,6 +270,10 @@ def trade():
     # If we don't have any stocks, buy some
     if my_cash > 320 and num_owned < 4:
       pick_stock()
+
+    not_making_money = False
+    if my_cash > old_cash and my_cash - old_cash < 1 and my_cash - old_cash > 0.0000001:
+      not_making_money = True
 
     for sec, vl in my_securities.iteritems():
       we_hold = vl[0]
