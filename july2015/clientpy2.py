@@ -7,6 +7,8 @@ import copy
 # Default stuff
 
 sock = None
+cur_time = 0
+
 def once_run(*commands):
   global sock
   HOST, PORT = "codebb.cloudapp.net", 17429
@@ -45,21 +47,35 @@ def run(commands):
 OUR_USERNAME = "Team6"
 OUR_PASSWORD = "bird"
 
+class Security:
+  def __init__(self, net_worth, dividend_ratio, volatility):
+    self.net_worth = net_worth
+    self.dividend_ratio = dividend_ratio
+    self.volatility = volatility
+
+class Order:
+  def __init__(self, price, shares):
+    self.price = price
+    self.shares = shares
+
 securities = {}
-orders = {}
 my_cash = 0
 my_securities = {}
 my_orders = {}
+
+ask_orders = {} # Map of asks for each stock STOCK_SYMBOL -> List[Bid]
+bid_orders = {} # Map of bids for each stock STOCK_SYMBOL -> List[Bid]
 
 # Helper functions
 
 def get_securities():
   inp = run("SECURITIES")[0].split()[1:]
   for i in range(len(inp)/4):
-    securities[inp[4*i]] = (float(inp[4*i+1]), float(inp[4*i+2]), float(inp[4*i+3]))
+    securities[inp[4*i]] = Security(float(inp[4*i+1]), float(inp[4*i+2]), float(inp[4*i+3]))
 
 def get_cash():
   global my_cash
+  print run("MY_CASH")
   my_cash = float(run("MY_CASH")[0].split()[1])
 
 def get_my_securities():
@@ -79,25 +95,18 @@ def get_my_orders():
 def get_orders(stock):
   inp = run("ORDERS " + stock)[0].split()[1:]
   out = []
+
+  ask_orders[stock] = []
+  bid_orders[stock] = []
+
   for i in range(len(inp)/4):
-    out.append( (inp[4*i], inp[4*i+1], float(inp[4*i+2]), int(inp[4*i+3])) )
-  orders[stock] = out
-
-def get_buy_and_sell_prices(order):
-  cur_buy = 0
-  cur_sell = 1000
-  for bid_ask, name, price, nshare in order:
-    if bid_ask == "BID":
-      if price > cur_buy:
-        cur_buy = price
-    if bid_ask == "ASK":
-      if price < cur_sell:
-        cur_sell = price
-  return (cur_buy, cur_sell)
-
-
+    if inp[4*i+1] == 'ASK':
+      ask_orders[stock].append(Order(float(inp[4*i+2]), int(inp[4*i+3])))
+    else:
+      bid_orders[stock].append(Order(float(inp[4*i+2]), int(inp[4*i+3])))
 
 def trade():
+  # Kill old connections
   for i in xrange(5):
     once_run("")
 
@@ -108,12 +117,21 @@ def trade():
 
     print "MY_CASH " + str(my_cash)    
 
+    print "GEN_SEC:"
     for k in securities:
         get_orders(k)
-        print k + " --- " + str(securities[k])
 
-    print "MY_SEC:"
-    for k in my_securities:
-      print k + " --- " + str(my_securities[k])
+    print "BEST_ASK:"
+    for security in ask_orders:
+      ask_orders[security].sort(key=lambda x: x.price)
+      print security + ": " + ask_orders[security][-1].price + " (count: " + ask_orders[security][-1].shares + ")"
+
+    print "BEST_BID:"
+    for security in bid_orders:
+      bid_orders[security].sort(key=lambda x: x.price)
+      print security + ": " + bid_orders[security][0].price + " (count: " + bid_orders[security][0].shares + ")"
+
+    time.sleep(1)
+    cur_time += 1
 
 trade()
