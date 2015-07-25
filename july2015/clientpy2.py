@@ -18,6 +18,7 @@ ask_orders = {} # Map of asks for each stock STOCK_SYMBOL -> List[Bid]
 bid_orders = {} # Map of bids for each stock STOCK_SYMBOL -> List[Bid]
 net_worth = {}
 
+old_cash = 0
 no_buy = 0
 cur_bids = []
 
@@ -210,7 +211,6 @@ def pick_stock():
 
     if not bad:
       get_cash()
-      old_cash = my_cash
       get_orders(sec)
       cur_buy, cur_sell = get_buy_and_sell_prices(orders[sec])
 
@@ -219,7 +219,7 @@ def pick_stock():
 
       if no_buy > 15:
         print "Buying %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
-        buying_price = max(cur_sell, cur_buy) + 0.001
+        buying_price = cur_sell + 0.001
         num_shares = int(my_cash / buying_price)
         run("BID %s %f %d" % (sec, buying_price, num_shares))
       else:
@@ -232,6 +232,8 @@ time_sold = {}
 def trade():
   global no_buy
   global cur_bids
+
+  old_cash = my_cash
 
   for i in xrange(5):
     once_run("")
@@ -281,9 +283,10 @@ def trade():
           smart_sell_1_iter(sec)
           # If we managed to sell something completely, update it
           time_sold[sec] = datetime.datetime.now()
+    old_cash = my_cash
     time.sleep(1)
 
-
+get_cash()
 get_my_securities()
 for security in my_securities:
   time_bought[security] = datetime.datetime.now() - datetime.timedelta(seconds=90)
