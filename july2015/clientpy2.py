@@ -7,7 +7,6 @@ import copy
 # Default stuff
 
 sock = None
-cur_time = 0
 
 def once_run(*commands):
   global sock
@@ -47,11 +46,18 @@ def run(commands):
 OUR_USERNAME = "Team6"
 OUR_PASSWORD = "bird"
 
+# Magic constants
+
 class Security:
   def __init__(self, net_worth, dividend_ratio, volatility):
     self.net_worth = net_worth
     self.dividend_ratio = dividend_ratio
     self.volatility = volatility
+
+class MySecurity:
+  def __init__(self, shares, dividend_ratio):
+    self.shares = shares
+    self.dividend_ratio = dividend_ratio
 
 class Order:
   def __init__(self, price, shares):
@@ -83,7 +89,7 @@ def get_my_securities():
   my_securities = {}
   inp = run("MY_SECURITIES")[0].split()[1:]
   for i in range(len(inp)/3):
-    my_securities[inp[3*i]] = (int(inp[3*i+1]), float(inp[3*i+2]))
+    my_securities[inp[3*i]] = MySecurity(int(inp[3*i+1]), float(inp[3*i+2]))
 
 def get_my_orders():
   global my_orders
@@ -100,12 +106,19 @@ def get_orders(stock):
   bid_orders[stock] = []
 
   for i in range(len(inp)/4):
-    if inp[4*i+1] == 'ASK':
+    if inp[4*i] == 'ASK':
       ask_orders[stock].append(Order(float(inp[4*i+2]), int(inp[4*i+3])))
     else:
       bid_orders[stock].append(Order(float(inp[4*i+2]), int(inp[4*i+3])))
 
+def buy():
+  pass # TODO
+
+def sell():
+  pass # TODO
+
 def trade():
+  cur_time = 0
   # Kill old connections
   for i in xrange(5):
     once_run("")
@@ -124,12 +137,23 @@ def trade():
     print "BEST_ASK:"
     for security in ask_orders:
       ask_orders[security].sort(key=lambda x: x.price)
-      print security + ": " + ask_orders[security][-1].price + " (count: " + ask_orders[security][-1].shares + ")"
+      if len(ask_orders[security]) != 0:
+        print security + ": " + str(ask_orders[security][-1].price) + " (count: " + str(ask_orders[security][-1].shares) + ")"
 
     print "BEST_BID:"
     for security in bid_orders:
       bid_orders[security].sort(key=lambda x: x.price)
-      print security + ": " + bid_orders[security][0].price + " (count: " + bid_orders[security][0].shares + ")"
+      if len(bid_orders[security]) != 0:
+        print security + ": " + str(bid_orders[security][0].price) + " (count: " + str(bid_orders[security][0].shares) + ")"
+
+    # Check if we have wasted shares, if so sell them
+    sell()
+
+    get_cash()
+
+    if my_cash > 100:
+      # Buy the best shares available
+      buy()
 
     time.sleep(1)
     cur_time += 1
