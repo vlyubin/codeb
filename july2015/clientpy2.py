@@ -209,16 +209,15 @@ def pick_stock():
       bad = True
 
     if not bad:
+      get_cash()
+      old_cash = my_cash
       get_orders(sec)
       cur_buy, cur_sell = get_buy_and_sell_prices(orders[sec])
 
       buying_price = min(cur_sell, cur_buy) + 0.001
       num_shares = int(my_cash / buying_price)
 
-      if num_shares < 2:
-        break
-
-      if no_buy > 15 or random.random() < 0.1:
+      if no_buy > 15:
         print "Buying %s: %d shares at %f" % (sec, num_shares, cur_sell+0.001)
         buying_price = max(cur_sell, cur_buy) + 0.001
         num_shares = int(my_cash / buying_price)
